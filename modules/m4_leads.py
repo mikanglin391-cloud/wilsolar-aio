@@ -46,7 +46,7 @@ def render():
         st.divider()
         rows = conn.execute("SELECT * FROM leads ORDER BY id DESC LIMIT 30").fetchall()
         if rows:
-            st.dataframe([dict(r) for r in rows], use_container_width=True)
+            st.dataframe([dict(r) for r in rows], width='stretch')
         else:
             st.info("暂无线索，录入后会在此显示")
 
@@ -71,12 +71,12 @@ def render():
             "FROM leads WHERE source_keyword!='' GROUP BY source_keyword ORDER BY n DESC"
         ).fetchall()
         if by_kw:
-            st.dataframe([{"关键词": r["source_keyword"], "线索数": r["n"], "成交数": r["won"] or 0} for r in by_kw], use_container_width=True)
+            st.dataframe([{"关键词": r["source_keyword"], "线索数": r["n"], "成交数": r["won"] or 0} for r in by_kw], width='stretch')
 
         st.caption("按平台统计")
         by_plat = conn.execute("SELECT platform, COUNT(*) n FROM leads GROUP BY platform ORDER BY n DESC").fetchall()
         if by_plat:
-            st.dataframe([{"平台": r["platform"], "线索数": r["n"]} for r in by_plat], use_container_width=True)
+            st.dataframe([{"平台": r["platform"], "线索数": r["n"]} for r in by_plat], width='stretch')
 
         # ROI 估算
         st.divider()
@@ -110,7 +110,7 @@ def render():
         c2.metric("本月成交", won_m)
         if kw_m:
             st.write("**Top 关键词线索来源：**")
-            st.dataframe([{"关键词": r["source_keyword"], "线索数": r["n"]} for r in kw_m], use_container_width=True)
+            st.dataframe([{"关键词": r["source_keyword"], "线索数": r["n"]} for r in kw_m], width='stretch')
         if st.button("📄 导出月度报表（文本）"):
             lines = [f"=== {month} 月度效果报表 ===", f"总线索: {total_m}", f"成交: {won_m}", "", "Top关键词:"]
             for r in kw_m:

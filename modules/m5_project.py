@@ -98,7 +98,7 @@ def render():
             "SELECT * FROM tasks WHERE task_date=? AND completed=0 ORDER BY role", (today,)
         ).fetchall()
         if pending:
-            st.dataframe([{"角色": config.ROLES[r["role"]]["name"], "任务": r["label"], "目标": r["target_qty"], "已完成": r["done_qty"]} for r in pending], use_container_width=True)
+            st.dataframe([{"角色": config.ROLES[r["role"]]["name"], "任务": r["label"], "目标": r["target_qty"], "已完成": r["done_qty"]} for r in pending], width='stretch')
         else:
             st.success("今日任务已全部完成")
 

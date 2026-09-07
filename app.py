@@ -19,28 +19,6 @@ def _init():
 
 _init()
 
-# 侧边栏导航
-st.sidebar.title("💡 伟澳新能源 AIO 获客系统")
-st.sidebar.caption("户外路灯 · 外贸 B 端 · AI 搜索优化")
-menu = st.sidebar.radio(
-    "功能模块",
-    ["🏠 首页概览", "📝 1. AIO内容生成", "📡 2. 内容分发", "📈 3. 排名监测",
-     "🎯 4. 线索效果", "👥 5. 项目管理与绩效"],
-)
-
-if menu.startswith("🏠"):
-    _home()
-elif menu.startswith("📝"):
-    m1_content_gen.render()
-elif menu.startswith("📡"):
-    m2_distribution.render()
-elif menu.startswith("📈"):
-    m3_ranking.render()
-elif menu.startswith("🎯"):
-    m4_leads.render()
-elif menu.startswith("👥"):
-    m5_project.render()
-
 
 def _home():
     st.title("户外路灯外贸 AIO 获客自动化系统")
@@ -84,17 +62,40 @@ def _home():
         st.subheader("最新排名记录")
         rows = conn.execute("SELECT keyword, platform, rank, snap_date FROM ranking_snapshots ORDER BY id DESC LIMIT 8").fetchall()
         if rows:
-            st.dataframe([dict(r) for r in rows], use_container_width=True)
+            st.dataframe([dict(r) for r in rows], width='stretch')
         else:
             st.caption("暂无，请到模块3开始监测")
     with col2:
         st.subheader("最新线索")
         rows = conn.execute("SELECT company, country, source_keyword, status, lead_date FROM leads ORDER BY id DESC LIMIT 8").fetchall()
         if rows:
-            st.dataframe([dict(r) for r in rows], use_container_width=True)
+            st.dataframe([dict(r) for r in rows], width='stretch')
         else:
             st.caption("暂无，请到模块4录入")
     conn.close()
+
+
+# 侧边栏导航
+st.sidebar.title("💡 伟澳新能源 AIO 获客系统")
+st.sidebar.caption("户外路灯 · 外贸 B 端 · AI 搜索优化")
+menu = st.sidebar.radio(
+    "功能模块",
+    ["🏠 首页概览", "📝 1. AIO内容生成", "📡 2. 内容分发", "📈 3. 排名监测",
+     "🎯 4. 线索效果", "👥 5. 项目管理与绩效"],
+)
+
+if menu.startswith("🏠"):
+    _home()
+elif menu.startswith("📝"):
+    m1_content_gen.render()
+elif menu.startswith("📡"):
+    m2_distribution.render()
+elif menu.startswith("📈"):
+    m3_ranking.render()
+elif menu.startswith("🎯"):
+    m4_leads.render()
+elif menu.startswith("👥"):
+    m5_project.render()
 
 
 if __name__ == "__main__":

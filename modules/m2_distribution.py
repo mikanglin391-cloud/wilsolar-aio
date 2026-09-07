@@ -79,7 +79,7 @@ def render():
             "LEFT JOIN channels ch ON ch.id=p.channel_id ORDER BY p.id DESC LIMIT 20"
         ).fetchall()
         if logs:
-            st.dataframe([dict(r) for r in logs], use_container_width=True)
+            st.dataframe([dict(r) for r in logs], width='stretch')
         else:
             st.info("暂无发布记录")
 
@@ -109,7 +109,7 @@ def render():
         c1.metric("新鲜内容（≤30天）", fresh)
         c2.metric("陈旧内容（>30天）", stale)
         if data:
-            st.dataframe(data, use_container_width=True)
+            st.dataframe(data, width='stretch')
 
         st.divider()
         st.subheader("📮 站点地图提交提醒")

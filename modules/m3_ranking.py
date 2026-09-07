@@ -66,7 +66,7 @@ def render():
             (today,)
         ).fetchall()
         if rows:
-            st.dataframe([dict(r) for r in rows], use_container_width=True)
+            st.dataframe([dict(r) for r in rows], width='stretch')
         else:
             st.info("今日暂无记录")
 
@@ -84,7 +84,7 @@ def render():
             st.info("该关键词暂无排名数据，请先在「今日监测录入」记录")
         else:
             df = [dict(r) for r in rows]
-            st.dataframe(df, use_container_width=True)
+            st.dataframe(df, width='stretch')
             # 升降标注
             by_platform = {}
             for r in df:
@@ -133,6 +133,6 @@ def render():
                 suggestions.append((kw, f"第{r}位", "🟡 补充结构化数据(JSON-LD) + 场景化内容，冲刺前3"))
             else:
                 suggestions.append((kw, f"第{r}位", "🔴 重新审视内容匹配度，扩展长尾词覆盖"))
-        st.dataframe([{"关键词": s[0], "当前排名": s[1], "建议": s[2]} for s in suggestions], use_container_width=True)
+        st.dataframe([{"关键词": s[0], "当前排名": s[1], "建议": s[2]} for s in suggestions], width='stretch')
 
     conn.close()
