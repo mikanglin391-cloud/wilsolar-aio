@@ -1,0 +1,9 @@
+# 运行时数据与缓存（不入库，首次运行自动生成）
+__pycache__/
+*.pyc
+data/
+export/
+.env
+*.db
+*.db-wal
+*.db-shm
