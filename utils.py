@@ -45,6 +45,24 @@ def to_df(rows):
     return pd.DataFrame([dict(r) for r in rows])
 
 
+def highlight_rank(df, col="rank"):
+    """给 rank 列值 >= 1 的行加绿色背景高亮（rank>=1 表示 AI 已出现我方品牌）。
+    返回 pandas Styler，可直接传给 st.dataframe / st.table。"""
+    if df.empty or col not in df.columns:
+        return df
+
+    def _style(row):
+        try:
+            v = row[col]
+        except Exception:
+            return [""] * len(row)
+        if v is not None and v >= 1:
+            return ["background-color: #d4edda;"] * len(row)
+        return [""] * len(row)
+
+    return df.style.apply(_style, axis=1)
+
+
 def copy_block(text, caption="点击右上角复制按钮", language="text"):
     """用 st.code 展示文本（自带复制按钮），满足「一键复制」需求。"""
     st.caption(caption)

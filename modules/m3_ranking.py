@@ -83,7 +83,8 @@ def render():
             (today,)
         ).fetchall()
         if rows:
-            st.dataframe(utils.to_df(rows), width="stretch")
+            st.caption("🟢 绿色高亮 = AI 已出现我方品牌（位次 ≥ 1）")
+            st.dataframe(utils.highlight_rank(utils.to_df(rows)))
         else:
             st.info("今日暂无记录")
 
@@ -101,7 +102,8 @@ def render():
             st.info("该关键词暂无排名数据，请先在「今日监测录入」记录")
         else:
             df = utils.to_df(rows)
-            st.dataframe(df, width="stretch")
+            st.caption("🟢 绿色高亮 = AI 已出现我方品牌（位次 ≥ 1）")
+            st.dataframe(utils.highlight_rank(df))
 
             # 折线图（rank=0 映射为 20 表示未出现，值越小排名越好）
             pivot = {}
