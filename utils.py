@@ -27,11 +27,20 @@ def validate_email(email):
     return (True, "") if pattern.match(email.strip()) else (False, "邮箱格式不正确")
 
 
+def ascii_filename(name):
+    """把文件名转成 ASCII 安全（去除非 ASCII 字符）。
+    Windows 下 Streamlit 的 download_button 对中文文件名会抛 OSError [Errno 22]。"""
+    cleaned = re.sub(r"[^\w\-.]", "_", name, flags=re.ASCII)
+    cleaned = cleaned.strip("_.")
+    return cleaned if cleaned else "download"
+
+
 def export_excel(df, filename, label="📥 导出 Excel"):
     """把 pandas DataFrame 导出为 Excel 下载按钮。"""
+    filename = ascii_filename(filename)
     buf = io.BytesIO()
     with pd.ExcelWriter(buf, engine="openpyxl") as writer:
-        df.to_excel(writer, index=False, sheet_name="数据")
+        df.to_excel(writer, index=False, sheet_name="data")
     return st.download_button(
         label, buf.getvalue(), file_name=filename,
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"

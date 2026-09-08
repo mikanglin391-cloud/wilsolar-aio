@@ -168,6 +168,6 @@ def render():
                 suggestions.append((kw, f"第{r}位", "🔴 重新审视内容匹配度，扩展长尾词覆盖"))
         sug_df = utils.to_df([{"关键词": s[0], "当前排名": s[1], "建议": s[2]} for s in suggestions])
         st.dataframe(sug_df, width="stretch")
-        utils.export_excel(sug_df, "优化建议.xlsx", "📊 导出建议 Excel")
+        utils.export_excel(sug_df, "suggestions.xlsx", "📊 导出建议 Excel")
 
     conn.close()

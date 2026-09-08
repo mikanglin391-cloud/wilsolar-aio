@@ -82,8 +82,8 @@ def render():
                               f"保存内容：{st.session_state['gen_kw']}")
                     st.toast("已保存到内容库 ✅")
             with c2:
-                # 一键导出 HTML 文件
-                fname = f"{_safe(st.session_state['gen_kw'])}.html"
+                # 一键导出 HTML 文件（ASCII 安全文件名，避免 Windows [Errno 22]）
+                fname = utils.ascii_filename(st.session_state["gen_kw"]) + ".html"
                 st.download_button("⬇️ 一键下载 HTML 文件", st.session_state["gen_html"],
                                    file_name=fname, mime="text/html", width="stretch")
 
@@ -136,10 +136,10 @@ def render():
             if st.button("导出 sitemap 提示", width="stretch"):
                 _export_sitemap(rows)
         with exp_c4:
-            # 导出 Excel
+            # 导出 Excel（英文文件名，避免 Windows [Errno 22]）
             df = utils.to_df([{"ID": r["id"], "标题": r["title"], "关键词": r["keyword"],
                                "类型": r["content_type"], "状态": r["status"]} for r in rows])
-            utils.export_excel(df, "内容库.xlsx", "📊 导出 Excel")
+            utils.export_excel(df, "content_library.xlsx", "📊 导出 Excel")
     conn.close()
 
 

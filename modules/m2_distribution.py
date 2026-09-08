@@ -117,7 +117,7 @@ def render():
             df = utils.to_df([{"ID": lg["id"], "标题": lg["title"], "渠道": lg["name"],
                                "关键词": lg["keyword"], "发布日期": lg["publish_date"],
                                "URL": lg["url"], "状态": "已真实上线" if lg["is_real"] else "模拟记录"} for lg in logs])
-            utils.export_excel(df, "发布记录.xlsx")
+            utils.export_excel(df, "publish_log.xlsx")
         else:
             st.info("暂无发布记录")
 

@@ -124,7 +124,7 @@ def render():
                                "邮箱": r["email"], "国家": r["country"], "来源关键词": r["source_keyword"],
                                "平台": r["platform"], "状态": STATUS_LABELS.get(r["status"], r["status"]),
                                "日期": r["lead_date"]} for r in rows])
-            utils.export_excel(df, "线索列表.xlsx")
+            utils.export_excel(df, "leads.xlsx")
 
     # ---- 转化统计 ----
     with tab_stat:
@@ -149,14 +149,14 @@ def render():
         if by_kw:
             kw_df = utils.to_df([{"关键词": r["source_keyword"], "线索数": r["n"], "成交数": r["won"] or 0} for r in by_kw])
             st.dataframe(kw_df, width="stretch")
-            utils.export_excel(kw_df, "转化统计-关键词.xlsx")
+            utils.export_excel(kw_df, "conversion_by_keyword.xlsx")
 
         st.caption("按平台统计")
         by_plat = conn.execute("SELECT platform, COUNT(*) n FROM leads GROUP BY platform ORDER BY n DESC").fetchall()
         if by_plat:
             plat_df = utils.to_df([{"平台": r["platform"], "线索数": r["n"]} for r in by_plat])
             st.dataframe(plat_df, width="stretch")
-            utils.export_excel(plat_df, "转化统计-平台.xlsx")
+            utils.export_excel(plat_df, "conversion_by_platform.xlsx")
 
         # ROI 估算
         st.divider()
@@ -194,7 +194,7 @@ def render():
             for r in kw_m:
                 lines.append(f"  - {r['source_keyword']}: {r['n']} 条")
             report = "\n".join(lines)
-            st.download_button("⬇️ 下载报表", report, file_name=f"月度报表_{month}.txt")
+            st.download_button("⬇️ 下载报表", report, file_name=f"monthly_report_{month}.txt")
 
     conn.close()
 
