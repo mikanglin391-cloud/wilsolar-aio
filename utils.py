@@ -98,4 +98,24 @@ HELP = {
     "country": "客户国家：正式业务模式必填，如 Nigeria / UAE / Philippines",
     "source_keyword": "来源关键词：客户通过哪个关键词找到你（AI 搜索推荐时，AI 平台会给出）",
     "rank": "我方出现位次：0=AI 没提我方；1=第一位推荐；≥1 表示 AI 已出现我方品牌",
+    # 产品参数
+    "model": "产品型号：如 WL-SSL-100W，用于 JSON-LD 结构化标记",
+    "lumen": "光通量：如 18,000 lm（180 lm/W）",
+    "battery": "电池规格：如 LiFePO4 3.2V/12.8V，含阴雨天续航天数",
+    "warranty": "质保年限：如 5 years",
+    "price": "价格区间：如 USD 45-95 / unit（FOB，按量浮动）",
+    "moq": "最小起订量：如 2 pcs（样品）/ 50 pcs（批量）",
+    # 渠道
+    "channel_name": "渠道名称：如 独立站官网、Google 商家档案、行业目录站",
+    "channel_type": "渠道类型：website=官网 / gmb=Google商家 / directory=目录站 / social=社媒",
+    "channel_url": "渠道主页地址，可留空",
+    # 排名监测
+    "source_url": "AI 引用来源 URL：AI 回答里引用了我方哪个页面的链接（选填）",
+    "mention": "AI 推荐话术：AI 提到我方品牌时的原话，用于分析 AI 引用内容",
+    # 线索
+    "contact": "客户联系人姓名",
+    "whatsapp": "客户 WhatsApp 号码（含国家区号，如 +63）",
+    "platform": "客户从哪个 AI 平台找到你（ChatGPT/Bing/Google SGE 等）",
+    "content_type": "客户看到的内容类型（产品页/场景页/FAQ 等），用于统计哪类内容转化好",
+    "inquiry": "客户询盘的具体内容（要什么产品、数量、目标市场等）",
 }

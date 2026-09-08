@@ -50,8 +50,8 @@ def render():
         with r1:
             rank = st.number_input("我方出现位次（0=未出现，1=第1位）", 0, 20, 0, help=utils.HELP["rank"])
         with r2:
-            source_url = st.text_input("AI 引用来源 URL（选填）")
-        mention = st.text_area("AI 推荐话术（AI 提到我方的原话）")
+            source_url = st.text_input("AI 引用来源 URL（选填）", help=utils.HELP["source_url"])
+        mention = st.text_area("AI 推荐话术（AI 提到我方的原话）", help=utils.HELP["mention"])
 
         if st.button("💾 记录本次排名", type="primary"):
             # 检测 0 → ≥1 的跃迁

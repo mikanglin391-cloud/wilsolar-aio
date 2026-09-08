@@ -34,11 +34,11 @@ def render():
         st.divider()
         c1, c2, c3, c4 = st.columns([2, 1, 2, 1])
         with c1:
-            new_name = st.text_input("渠道名称", key="ch_name")
+            new_name = st.text_input("渠道名称", key="ch_name", help=utils.HELP["channel_name"])
         with c2:
-            new_type = st.selectbox("类型", ["website", "gmb", "directory", "social"], key="ch_type")
+            new_type = st.selectbox("类型", ["website", "gmb", "directory", "social"], key="ch_type", help=utils.HELP["channel_type"])
         with c3:
-            new_url = st.text_input("URL（可选）", key="ch_url")
+            new_url = st.text_input("URL（可选）", key="ch_url", help=utils.HELP["channel_url"])
         with c4:
             if st.button("➕ 添加渠道"):
                 if new_name:

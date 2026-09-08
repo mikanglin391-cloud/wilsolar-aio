@@ -72,12 +72,12 @@ def render():
         total_t = conn.execute("SELECT COUNT(*) FROM tasks WHERE task_date=?", (ds,)).fetchone()[0]
         done_t = conn.execute("SELECT COUNT(*) FROM tasks WHERE task_date=? AND completed=1", (ds,)).fetchone()[0]
         rate = (done_t / total_t * 100) if total_t else 0
-        if rate >= 100:
-            st.success(f"✅ 当日任务完成率 {rate:.0f}%（{done_t}/{total_t} 项）— 达标")
-        elif rate >= 50:
-            st.warning(f"⚠️ 当日任务完成率 {rate:.0f}%（{done_t}/{total_t} 项）— 部分完成")
+        if rate >= 80:
+            st.success(f"✅ 当日任务完成率 {rate:.0f}%（{done_t}/{total_t} 项）— 高完成（≥80%）")
+        elif rate >= 40:
+            st.warning(f"⚠️ 当日任务完成率 {rate:.0f}%（{done_t}/{total_t} 项）— 部分完成（40-79%）")
         else:
-            st.error(f"🔴 当日任务完成率 {rate:.0f}%（{done_t}/{total_t} 项）— 低完成率")
+            st.error(f"🔴 当日任务完成率 {rate:.0f}%（{done_t}/{total_t} 项）— 低完成（<40%）")
 
     # ---- 绩效核算（含自动统计） ----
     with tab_perf:

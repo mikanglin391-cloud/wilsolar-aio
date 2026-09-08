@@ -30,16 +30,16 @@ def render():
         c1, c2, c3 = st.columns(3)
         with c1:
             company = st.text_input("公司名", help=utils.HELP["company"])
-            contact = st.text_input("联系人")
+            contact = st.text_input("联系人", help=utils.HELP["contact"])
             country = st.text_input("国家/地区" + (" *" if is_formal else ""), help=utils.HELP["country"])
         with c2:
             email = st.text_input("邮箱" + (" *" if is_formal else ""), help=utils.HELP["email"])
-            whatsapp = st.text_input("WhatsApp")
+            whatsapp = st.text_input("WhatsApp", help=utils.HELP["whatsapp"])
         with c3:
             source_kw = st.text_input("来源关键词" + (" *" if is_formal else ""), help=utils.HELP["source_keyword"])
-            platform = st.selectbox("来源平台", ["ChatGPT", "Bing AI", "Google SGE", "Google 搜索", "官网直达", "其他"])
-        content_type = st.selectbox("内容类型", ["产品页", "场景页", "FAQ", "选型指南", "安装教程", "视频", "其他"])
-        inquiry = st.text_area("询盘内容")
+            platform = st.selectbox("来源平台", ["ChatGPT", "Bing AI", "Google SGE", "Google 搜索", "官网直达", "其他"], help=utils.HELP["platform"])
+        content_type = st.selectbox("内容类型", ["产品页", "场景页", "FAQ", "选型指南", "安装教程", "视频", "其他"], help=utils.HELP["content_type"])
+        inquiry = st.text_area("询盘内容", help=utils.HELP["inquiry"])
         lead_date = st.date_input("询盘日期", date.today())
         status = st.selectbox("初始状态", STATUS_ORDER, format_func=lambda s: STATUS_LABELS[s])
 

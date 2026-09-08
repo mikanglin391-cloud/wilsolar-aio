@@ -28,12 +28,12 @@ def render():
         wattage = st.selectbox("功率", [f"{w}W" for w in config.POWER], index=6, help=utils.HELP["wattage"])
 
     with st.expander("⚙️ 产品参数（可修改后生成）", expanded=False):
-        model = st.text_input("型号", ai_engine.DEFAULT_PRODUCT["model"])
-        lumen = st.text_input("光通量", ai_engine.DEFAULT_PRODUCT["lumen"])
-        battery = st.text_input("电池", ai_engine.DEFAULT_PRODUCT["battery"])
-        warranty = st.text_input("质保", ai_engine.DEFAULT_PRODUCT["warranty"])
-        price = st.text_input("价格", ai_engine.DEFAULT_PRODUCT["price"])
-        moq = st.text_input("MOQ", ai_engine.DEFAULT_PRODUCT["moq"])
+        model = st.text_input("型号", ai_engine.DEFAULT_PRODUCT["model"], help=utils.HELP["model"])
+        lumen = st.text_input("光通量", ai_engine.DEFAULT_PRODUCT["lumen"], help=utils.HELP["lumen"])
+        battery = st.text_input("电池", ai_engine.DEFAULT_PRODUCT["battery"], help=utils.HELP["battery"])
+        warranty = st.text_input("质保", ai_engine.DEFAULT_PRODUCT["warranty"], help=utils.HELP["warranty"])
+        price = st.text_input("价格", ai_engine.DEFAULT_PRODUCT["price"], help=utils.HELP["price"])
+        moq = st.text_input("MOQ", ai_engine.DEFAULT_PRODUCT["moq"], help=utils.HELP["moq"])
 
     product_override = {
         "model": model, "lumen": lumen, "battery": battery,
