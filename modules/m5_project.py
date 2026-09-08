@@ -1,13 +1,14 @@
 # -*- coding: utf-8 -*-
 """
 m5_project.py — 模块5：项目管理与绩效核算
-3个月阶段拆解、2人每日任务打卡、绩效核算（40/30/30）、任务预警。
+增强：打卡完成率颜色状态、绩效核算自动统计、阶段看板进度条
 """
 from datetime import date, datetime, timedelta
 import calendar
 import streamlit as st
 import db
 import config
+import utils
 
 
 def render():
@@ -19,18 +20,32 @@ def render():
 
     tab_phase, tab_task, tab_perf, tab_alert = st.tabs(["阶段看板", "每日任务打卡", "绩效核算", "任务预警"])
 
-    # ---- 阶段看板 ----
+    # ---- 阶段看板（含进度条） ----
     with tab_phase:
-        st.subheader("3个月阶段拆解")
+        st.subheader("3个月阶段拆解与进度")
+        # 当前累计值
+        actual = {
+            "内容产出": conn.execute("SELECT COUNT(*) FROM content").fetchone()[0],
+            "发布次数": conn.execute("SELECT COUNT(*) FROM publish_log").fetchone()[0],
+            "排名监测": conn.execute("SELECT COUNT(*) FROM ranking_snapshots").fetchone()[0],
+            "询盘线索": conn.execute("SELECT COUNT(*) FROM leads").fetchone()[0],
+        }
         for m, p in config.PHASES.items():
             with st.expander(f"第{m}个月 · {p['name']}", expanded=(m == 1)):
                 st.markdown(f"**目标：** {p['goal']}")
                 st.markdown(f"**周度目标：** {p['weekly_target']}")
+                goal = config.PHASE_GOALS[m]
+                cols = st.columns(4)
+                for i, (k, g) in enumerate(goal.items()):
+                    a = actual.get(k, 0)
+                    ratio = min(1.0, a / g) if g else 0
+                    cols[i].metric(k, f"{a}/{g}", f"{int(ratio * 100)}%")
+                    cols[i].progress(ratio)
         st.caption("角色分工")
         for r, cfg in config.ROLES.items():
             st.markdown(f"**{cfg['name']}** — {'、'.join(cfg['duties'])}")
 
-    # ---- 每日任务打卡 ----
+    # ---- 每日任务打卡（完成率颜色状态） ----
     with tab_task:
         st.subheader("每日任务打卡")
         d = st.date_input("选择日期", date.today())
@@ -49,20 +64,42 @@ def render():
                     conn.execute("UPDATE tasks SET done_qty=?, completed=? WHERE id=?", (done, completed, t["id"]))
                     conn.execute("INSERT INTO task_checkins (task_id, check_date, qty) VALUES (?,?,?)", (t["id"], ds, done))
                     conn.commit()
+                    utils.log(conn, "打卡", "模块5-任务", st.session_state.get("operator", ""),
+                              f"{config.ROLES[role]['name']} 打卡：{t['label']} {done}/{t['target_qty']}")
                     st.toast("已打卡 ✅")
 
-        # 当日完成率
+        # 当日完成率（颜色状态）
         total_t = conn.execute("SELECT COUNT(*) FROM tasks WHERE task_date=?", (ds,)).fetchone()[0]
         done_t = conn.execute("SELECT COUNT(*) FROM tasks WHERE task_date=? AND completed=1", (ds,)).fetchone()[0]
         rate = (done_t / total_t * 100) if total_t else 0
-        st.metric(f"当日任务完成率", f"{rate:.0f}%", f"{done_t}/{total_t} 项完成")
+        if rate >= 100:
+            st.success(f"✅ 当日任务完成率 {rate:.0f}%（{done_t}/{total_t} 项）— 达标")
+        elif rate >= 50:
+            st.warning(f"⚠️ 当日任务完成率 {rate:.0f}%（{done_t}/{total_t} 项）— 部分完成")
+        else:
+            st.error(f"🔴 当日任务完成率 {rate:.0f}%（{done_t}/{total_t} 项）— 低完成率")
 
-    # ---- 绩效核算 ----
+    # ---- 绩效核算（含自动统计） ----
     with tab_perf:
         st.subheader("绩效核算（每人每月 5000 元）")
         st.caption("40% 每日任务 + 30% 周度目标 + 30% 月度效果，不设固定发放")
         role = st.radio("核算对象", ["A", "B"], format_func=lambda r: config.ROLES[r]["name"], horizontal=True)
         month = st.text_input("核算月份（YYYY-MM）", today[:7])
+
+        # 周期内自动统计
+        st.divider()
+        st.caption("📊 周期内数据统计（自动）")
+        gen_n = conn.execute("SELECT COUNT(*) FROM content WHERE created_at LIKE ?", (month + "%",)).fetchone()[0]
+        pub_n = conn.execute("SELECT COUNT(*) FROM publish_log WHERE publish_date LIKE ?", (month + "%",)).fetchone()[0]
+        lead_n = conn.execute("SELECT COUNT(*) FROM leads WHERE lead_date LIKE ?", (month + "%",)).fetchone()[0]
+        rank_n = conn.execute("SELECT COUNT(*) FROM ranking_snapshots WHERE snap_date LIKE ?", (month + "%",)).fetchone()[0]
+        s1, s2, s3, s4 = st.columns(4)
+        s1.metric("AIO 生成数", gen_n)
+        s2.metric("发布数量", pub_n)
+        s3.metric("获取线索数", lead_n)
+        s4.metric("排名监测数", rank_n)
+
+        st.divider()
         if st.button("🧮 开始核算", type="primary"):
             result = calc_performance(conn, role, month)
             _show_perf_result(result)
@@ -74,13 +111,14 @@ def render():
                      result["bonus"], result["penalty"], result["note"])
                 )
                 conn.commit()
+                utils.log(conn, "新增", "模块5-绩效", st.session_state.get("operator", ""),
+                          f"核算 {config.ROLES[role]['name']} {month}：{result['bonus']} 元")
                 st.toast("核算结果已保存 ✅")
 
     # ---- 任务预警 ----
     with tab_alert:
         st.subheader("任务预警")
         st.caption("当日未完成自动提醒；连续3天未完成触发额外扣减（第4天起每天额外扣 100 元）")
-        # 统计最近连续未完成
         for role in ["A", "B"]:
             miss_days = _consecutive_miss(conn, role)
             name = config.ROLES[role]["name"]
@@ -91,21 +129,18 @@ def render():
             else:
                 st.success(f"✅ {name}：今日任务正常")
 
-        # 未完成任务列表
         st.divider()
         st.caption("今日未完成任务")
-        pending = conn.execute(
-            "SELECT * FROM tasks WHERE task_date=? AND completed=0 ORDER BY role", (today,)
-        ).fetchall()
+        pending = conn.execute("SELECT * FROM tasks WHERE task_date=? AND completed=0 ORDER BY role", (today,)).fetchall()
         if pending:
-            st.dataframe([{"角色": config.ROLES[r["role"]]["name"], "任务": r["label"], "目标": r["target_qty"], "已完成": r["done_qty"]} for r in pending], width='stretch')
+            st.dataframe(utils.to_df([{"角色": config.ROLES[r["role"]]["name"], "任务": r["label"], "目标": r["target_qty"], "已完成": r["done_qty"]} for r in pending]), width="stretch")
         else:
             st.success("今日任务已全部完成")
 
     conn.close()
 
 
-# ============ 绩效核算核心逻辑 ============
+# ============ 绩效核算核心逻辑（原有，保持不变） ============
 
 def _consecutive_miss(conn, role):
     """计算该角色连续未完成天数（从今天往前）。"""
@@ -116,7 +151,7 @@ def _consecutive_miss(conn, role):
         total = conn.execute("SELECT COUNT(*) FROM tasks WHERE task_date=? AND role=?", (ds, role)).fetchone()[0]
         done = conn.execute("SELECT COUNT(*) FROM tasks WHERE task_date=? AND role=? AND completed=1", (ds, role)).fetchone()[0]
         if total == 0:
-            break  # 无任务日不计
+            break
         if done < total:
             miss += 1
         else:
@@ -130,31 +165,26 @@ def calc_performance(conn, role, month):
     year, mon = int(month[:4]), int(month[5:7])
     days_in_month = calendar.monthrange(year, mon)[1]
     base = config.PERF_RULES["monthly_bonus"]
-    daily_pool = base * config.PERF_RULES["daily_weight"]   # 2000
-    weekly_pool = base * config.PERF_RULES["weekly_weight"] # 1500
-    monthly_pool = base * config.PERF_RULES["monthly_weight"] # 1500
+    daily_pool = base * config.PERF_RULES["daily_weight"]
+    weekly_pool = base * config.PERF_RULES["weekly_weight"]
+    monthly_pool = base * config.PERF_RULES["monthly_weight"]
 
-    # --- 1. 每日任务完成度 (40%) ---
     daily_earned = 0.0
     daily_done_days = 0
     for day in range(1, days_in_month + 1):
         ds = f"{month}-{day:02d}"
         total = conn.execute("SELECT COUNT(*) FROM tasks WHERE task_date=? AND role=?", (ds, role)).fetchone()[0]
         if total == 0:
-            continue  # 未生成任务日跳过（按有任务日均摊）
+            continue
         done = conn.execute("SELECT COUNT(*) FROM tasks WHERE task_date=? AND role=? AND completed=1", (ds, role)).fetchone()[0]
         daily_earned += (daily_pool / days_in_month) * (done / total)
         if done >= total:
             daily_done_days += 1
     daily_rate = daily_earned / daily_pool * 100 if daily_pool else 0
 
-    # --- 2. 周度阶段目标 (30%) ---
     weekly_rate = _calc_weekly(conn, role, month)
-
-    # --- 3. 月度效果指标 (30%) ---
     monthly_rate = _calc_monthly(conn, role, month)
 
-    # --- 4. 连续未完成额外扣减 ---
     miss = _consecutive_miss(conn, role)
     penalty = 0.0
     if miss >= config.PERF_RULES["consecutive_miss_penalty"]:
@@ -178,37 +208,25 @@ def calc_performance(conn, role, month):
 
 def _calc_weekly(conn, role, month):
     """周度达成率：按内容产出量(角色A) / 排名监测量(角色B) 统计。"""
-    # 目标值（按阶段简化：第1月40/周、第2月60/周、第3月50/周；角色B 分别 30/50/40）
     mon = int(month[5:7])
     if role == "A":
         weekly_target = {1: 40, 2: 60, 3: 50}.get(mon, 40)
-        actual = conn.execute(
-            "SELECT COUNT(*) FROM content WHERE created_at LIKE ?", (month + "%",)
-        ).fetchone()[0]
+        actual = conn.execute("SELECT COUNT(*) FROM content WHERE created_at LIKE ?", (month + "%",)).fetchone()[0]
     else:
         weekly_target = {1: 30, 2: 50, 3: 40}.get(mon, 30)
-        actual = conn.execute(
-            "SELECT COUNT(*) FROM ranking_snapshots WHERE snap_date LIKE ?", (month + "%",)
-        ).fetchone()[0]
-    # 4周累计目标
+        actual = conn.execute("SELECT COUNT(*) FROM ranking_snapshots WHERE snap_date LIKE ?", (month + "%",)).fetchone()[0]
     weeks = 4
     target = weekly_target * weeks
     rate = (actual / target * 100) if target else 0
-    return min(150, rate)  # 封顶150%（超额奖励另计）
+    return min(150, rate)
 
 
 def _calc_monthly(conn, role, month):
     """月度效果：核心词排名达标率(50%) + 询盘增量(50%)。"""
-    # 排名达标率：rank 在 1-3 的监测记录占比
-    ranked = conn.execute(
-        "SELECT COUNT(*) FROM ranking_snapshots WHERE snap_date LIKE ?", (month + "%",)
-    ).fetchone()[0]
-    hit = conn.execute(
-        "SELECT COUNT(*) FROM ranking_snapshots WHERE snap_date LIKE ? AND rank>0 AND rank<=3", (month + "%",)
-    ).fetchone()[0]
+    ranked = conn.execute("SELECT COUNT(*) FROM ranking_snapshots WHERE snap_date LIKE ?", (month + "%",)).fetchone()[0]
+    hit = conn.execute("SELECT COUNT(*) FROM ranking_snapshots WHERE snap_date LIKE ? AND rank>0 AND rank<=3", (month + "%",)).fetchone()[0]
     rank_rate = (hit / ranked * 100) if ranked else 0
 
-    # 询盘增量：本月询盘数 / 目标(按角色分配，A=20/月, B=20/月)
     leads = conn.execute("SELECT COUNT(*) FROM leads WHERE lead_date LIKE ?", (month + "%",)).fetchone()[0]
     lead_target = 20
     lead_rate = (leads / lead_target * 100) if lead_target else 0

@@ -116,6 +116,29 @@ CREATE TABLE IF NOT EXISTS performance (
     note TEXT DEFAULT '',
     calc_date TEXT DEFAULT (datetime('now','localtime'))
 );
+
+CREATE TABLE IF NOT EXISTS operation_logs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    action TEXT DEFAULT '',
+    module TEXT DEFAULT '',
+    operator TEXT DEFAULT '',
+    detail TEXT DEFAULT '',
+    created_at TEXT DEFAULT (datetime('now','localtime'))
+);
+
+CREATE TABLE IF NOT EXISTS lead_followups (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    lead_id INTEGER,
+    follow_date TEXT,
+    note TEXT DEFAULT '',
+    status TEXT DEFAULT '',
+    created_at TEXT DEFAULT (datetime('now','localtime'))
+);
+
+CREATE TABLE IF NOT EXISTS settings (
+    key TEXT PRIMARY KEY,
+    value TEXT DEFAULT ''
+);
 """
 
 
@@ -135,6 +158,7 @@ def init_db():
     except sqlite3.OperationalError:
         pass
     conn.executescript(SCHEMA)
+    _migrate(conn)
     conn.commit()
 
     # 种子：默认关键词库
@@ -214,6 +238,52 @@ def upsert_tasks_for_date(d: str, conn=None):
     if own:
         conn.commit()
         conn.close()
+
+
+def _migrate(conn):
+    """兼容迁移：为已有表补充新增字段（幂等，可重复执行）。"""
+    cols = [r["name"] for r in conn.execute("PRAGMA table_info(publish_log)").fetchall()]
+    if "tag" not in cols:
+        conn.execute("ALTER TABLE publish_log ADD COLUMN tag TEXT DEFAULT 'simulated'")
+    if "is_real" not in cols:
+        conn.execute("ALTER TABLE publish_log ADD COLUMN is_real INTEGER DEFAULT 0")
+
+
+def log_action(conn, action, module, operator="", detail=""):
+    """记录操作日志（新增/修改/打卡/导出等）。"""
+    conn.execute(
+        "INSERT INTO operation_logs (action, module, operator, detail) VALUES (?,?,?,?)",
+        (action, module, operator, detail)
+    )
+    conn.commit()
+
+
+def get_setting(conn, key, default=""):
+    """读取全局设置。"""
+    row = conn.execute("SELECT value FROM settings WHERE key=?", (key,)).fetchone()
+    return row["value"] if row else default
+
+
+def set_setting(conn, key, value):
+    """写入全局设置。"""
+    conn.execute("INSERT OR REPLACE INTO settings (key, value) VALUES (?,?)", (key, str(value)))
+    conn.commit()
+
+
+def add_followup(conn, lead_id, note, status, follow_date):
+    """新增一条线索跟进记录。"""
+    conn.execute(
+        "INSERT INTO lead_followups (lead_id, follow_date, note, status) VALUES (?,?,?,?)",
+        (lead_id, follow_date, note, status)
+    )
+    conn.commit()
+
+
+def get_followups(conn, lead_id):
+    """获取某条线索的所有跟进记录。"""
+    return conn.execute(
+        "SELECT * FROM lead_followups WHERE lead_id=? ORDER BY id DESC", (lead_id,)
+    ).fetchall()
 
 
 if __name__ == "__main__":

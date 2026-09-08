@@ -1,14 +1,15 @@
 # -*- coding: utf-8 -*-
 """
 m1_content_gen.py — 模块1：AIO 智能内容生成
-生成符合 AI 搜索引擎抓取偏好的英文外贸内容，支持批量生成与导出。
+增强：一键导出 HTML、重复关键词检测、批量生成仅留 UI 入口
 """
-import json
 import os
+import re
 import streamlit as st
 import config
 import db
 import ai_engine
+import utils
 
 
 def render():
@@ -19,14 +20,13 @@ def render():
 
     col1, col2, col3 = st.columns(3)
     with col1:
-        kw = st.selectbox("目标关键词", keywords, index=0 if keywords else None)
+        kw = st.selectbox("目标关键词", keywords, index=0 if keywords else None, help=utils.HELP["keyword"])
     with col2:
         scene_key = st.selectbox("应用场景", list(config.SCENES.keys()),
-                                 format_func=lambda k: config.SCENES[k]["en"])
+                                 format_func=lambda k: config.SCENES[k]["en"], help=utils.HELP["scene"])
     with col3:
-        wattage = st.selectbox("功率", [f"{w}W" for w in config.POWER], index=6)  # 默认100W
+        wattage = st.selectbox("功率", [f"{w}W" for w in config.POWER], index=6, help=utils.HELP["wattage"])
 
-    # 产品参数可折叠编辑
     with st.expander("⚙️ 产品参数（可修改后生成）", expanded=False):
         model = st.text_input("型号", ai_engine.DEFAULT_PRODUCT["model"])
         lumen = st.text_input("光通量", ai_engine.DEFAULT_PRODUCT["lumen"])
@@ -45,11 +45,16 @@ def render():
     # ---- 单条生成 ----
     with tab_gen:
         if st.button("✨ 生成这条内容", type="primary"):
+            # 重复关键词检测
+            dup = conn.execute("SELECT COUNT(*) FROM content WHERE keyword=?", (kw,)).fetchone()[0]
+            if dup > 0:
+                st.warning(f"⚠️ 关键词「{kw}」已制作过 {dup} 条内容，避免重复制作相同内容。")
             title, md, html, jld = ai_engine.gen_product_content(kw, scene_key, product_override)
             st.session_state["gen_title"] = title
             st.session_state["gen_md"] = md
             st.session_state["gen_html"] = html
             st.session_state["gen_jld"] = jld
+            st.session_state["gen_kw"] = kw
 
         if "gen_md" in st.session_state:
             st.success(f"✅ 已生成：{st.session_state['gen_title']}")
@@ -61,38 +66,33 @@ def render():
             with sub[2]:
                 st.code(st.session_state["gen_jld"], language="json")
 
-            if st.button("💾 保存到内容库"):
-                kw_id = conn.execute("SELECT id FROM keywords WHERE keyword=?", (kw,)).fetchone()["id"]
-                conn.execute(
-                    "INSERT INTO content (title, keyword_id, content_type, scene, body_md, body_html, json_ld, keyword, status) "
-                    "VALUES (?,?,?,?,?,?,?,?,?)",
-                    (st.session_state["gen_title"], kw_id, "scene", scene_key,
-                     st.session_state["gen_md"], st.session_state["gen_html"],
-                     st.session_state["gen_jld"], kw, "draft")
-                )
-                conn.commit()
-                st.toast("已保存到内容库 ✅")
+            c1, c2 = st.columns(2)
+            with c1:
+                if st.button("💾 保存到内容库", width="stretch"):
+                    kw_id = conn.execute("SELECT id FROM keywords WHERE keyword=?", (st.session_state["gen_kw"],)).fetchone()["id"]
+                    conn.execute(
+                        "INSERT INTO content (title, keyword_id, content_type, scene, body_md, body_html, json_ld, keyword, status) "
+                        "VALUES (?,?,?,?,?,?,?,?,?)",
+                        (st.session_state["gen_title"], kw_id, "scene", scene_key,
+                         st.session_state["gen_md"], st.session_state["gen_html"],
+                         st.session_state["gen_jld"], st.session_state["gen_kw"], "draft")
+                    )
+                    conn.commit()
+                    utils.log(conn, "新增", "模块1-内容生成", st.session_state.get("operator", ""),
+                              f"保存内容：{st.session_state['gen_kw']}")
+                    st.toast("已保存到内容库 ✅")
+            with c2:
+                # 一键导出 HTML 文件
+                fname = f"{_safe(st.session_state['gen_kw'])}.html"
+                st.download_button("⬇️ 一键下载 HTML 文件", st.session_state["gen_html"],
+                                   file_name=fname, mime="text/html", width="stretch")
 
-    # ---- 批量生成 ----
+    # ---- 批量生成（仅预留 UI 入口，不实现完整逻辑） ----
     with tab_batch:
-        st.caption("勾选关键词，批量生成内容（每个关键词自动匹配场景）")
-        sel_kws = st.multiselect("选择要批量生成的关键词", keywords)
-        if st.button("🚀 批量生成", type="primary"):
-            count = 0
-            progress = st.progress(0.0)
-            for i, k in enumerate(sel_kws):
-                title, md, html, jld = ai_engine.gen_product_content(k, None, product_override)
-                kw_id = conn.execute("SELECT id FROM keywords WHERE keyword=?", (k,)).fetchone()["id"]
-                conn.execute(
-                    "INSERT INTO content (title, keyword_id, content_type, scene, body_md, body_html, json_ld, keyword, status) "
-                    "VALUES (?,?,?,?,?,?,?,?,?)",
-                    (title, kw_id, "scene", ai_engine._detect_scene_from_keyword(k) or "municipal",
-                     md, html, jld, k, "draft")
-                )
-                count += 1
-                progress.progress((i + 1) / len(sel_kws))
-            conn.commit()
-            st.success(f"✅ 批量生成完成：{count} 条内容已存入内容库")
+        st.caption("批量生成功能规划中，当前请使用「单条生成」逐条制作")
+        sel_kws = st.multiselect("选择要批量生成的关键词（预留）", keywords, disabled=True)
+        if st.button("🚀 批量生成（开发中）"):
+            st.info("批量生成功能将在后续版本开放，当前请使用「单条生成」")
 
     # ---- 词库管理 ----
     with tab_kw:
@@ -105,11 +105,13 @@ def render():
                 for k in new_kws:
                     if db.add_keyword(k, "longtail", ai_engine._detect_scene_from_keyword(k)):
                         added += 1
+                utils.log(conn, "新增", "模块1-词库", st.session_state.get("operator", ""), f"自动拓展长尾词 {added} 个")
                 st.success(f"已拓展并入库 {added} 个长尾关键词")
         with c2:
-            manual = st.text_input("手动新增关键词")
+            manual = st.text_input("手动新增关键词", help="新增关键词会自动检测场景")
             if st.button("➕ 新增") and manual:
                 db.add_keyword(manual, "longtail", ai_engine._detect_scene_from_keyword(manual))
+                utils.log(conn, "新增", "模块1-词库", st.session_state.get("operator", ""), f"新增关键词：{manual}")
                 st.toast("已新增 ✅")
 
         total = conn.execute("SELECT COUNT(*) FROM keywords").fetchone()[0]
@@ -123,22 +125,26 @@ def render():
     rows = conn.execute("SELECT id, title, keyword, content_type, status, body_md, body_html FROM content ORDER BY id DESC").fetchall()
     st.caption(f"内容库共 {len(rows)} 条")
     if rows:
-        exp_c1, exp_c2, exp_c3 = st.columns(3)
+        exp_c1, exp_c2, exp_c3, exp_c4 = st.columns(4)
         with exp_c1:
-            if st.button("导出全部 Markdown"):
+            if st.button("导出全部 Markdown", width="stretch"):
                 _export_batch(rows, "md")
         with exp_c2:
-            if st.button("导出全部 HTML"):
+            if st.button("导出全部 HTML", width="stretch"):
                 _export_batch(rows, "html")
         with exp_c3:
-            if st.button("导出 sitemap 提示"):
+            if st.button("导出 sitemap 提示", width="stretch"):
                 _export_sitemap(rows)
+        with exp_c4:
+            # 导出 Excel
+            df = utils.to_df([{"ID": r["id"], "标题": r["title"], "关键词": r["keyword"],
+                               "类型": r["content_type"], "状态": r["status"]} for r in rows])
+            utils.export_excel(df, "内容库.xlsx", "📊 导出 Excel")
     conn.close()
 
 
 def _export_batch(rows, fmt):
-    import config as cfg
-    outdir = os.path.join(cfg.EXPORT_DIR, "content_" + fmt)
+    outdir = os.path.join(config.EXPORT_DIR, "content_" + fmt)
     os.makedirs(outdir, exist_ok=True)
     n = 0
     for r in rows:
@@ -151,19 +157,17 @@ def _export_batch(rows, fmt):
 
 
 def _export_sitemap(rows):
-    import config as cfg
     urls = []
     for r in rows:
         slug = _safe(r["title"]).replace(" ", "-").lower()
         urls.append(f"https://www.wilsolar.com/{slug}/")
     content = "".join(f"  <url><loc>{u}</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>\n" for u in urls)
     sitemap = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' + content + "</urlset>"
-    p = os.path.join(cfg.EXPORT_DIR, "sitemap_suggestion.xml")
+    p = os.path.join(config.EXPORT_DIR, "sitemap_suggestion.xml")
     with open(p, "w", encoding="utf-8") as f:
         f.write(sitemap)
-    st.success(f"✅ 已生成站点地图建议 → 提交到 Google Search Console / Bing Webmaster，加速 AI 爬虫收录：{p}")
+    st.success(f"✅ 已生成站点地图建议：{p}")
 
 
 def _safe(s):
-    import re
     return re.sub(r"[^\w\u4e00-\u9fff-]+", "_", s)[:60]
