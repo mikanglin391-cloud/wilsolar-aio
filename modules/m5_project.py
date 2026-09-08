@@ -23,7 +23,6 @@ def render():
     # ---- 阶段看板（含进度条） ----
     with tab_phase:
         st.subheader("3个月阶段拆解与进度")
-        # 当前累计值
         actual = {
             "内容产出": conn.execute("SELECT COUNT(*) FROM content").fetchone()[0],
             "发布次数": conn.execute("SELECT COUNT(*) FROM publish_log").fetchone()[0],
@@ -86,7 +85,6 @@ def render():
         role = st.radio("核算对象", ["A", "B"], format_func=lambda r: config.ROLES[r]["name"], horizontal=True)
         month = st.text_input("核算月份（YYYY-MM）", today[:7])
 
-        # 周期内自动统计
         st.divider()
         st.caption("📊 周期内数据统计（自动）")
         gen_n = conn.execute("SELECT COUNT(*) FROM content WHERE created_at LIKE ?", (month + "%",)).fetchone()[0]
